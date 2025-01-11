@@ -22,7 +22,7 @@ A Next.js application that demonstrates secure authentication using Telegram Log
 
 2. Configure environment variables:
    ```bash
-   cp .env.example .env.local
+   cp .venv.example .env.local
    ```
    Fill in your Telegram API credentials in the `.env.local` file:
    - `TELEGRAM_API_ID`: Your API ID from my.telegram.org

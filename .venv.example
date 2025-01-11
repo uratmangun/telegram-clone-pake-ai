@@ -1,0 +1,4 @@
+TELEGRAM_API_ID=your-telegram-api-id
+TELEGRAM_API_HASH=your-telegram-api-hash
+NEXTAUTH_SECRET=your-nextauth-secret-key-here
+NEXTAUTH_URL=http://localhost:3000 
