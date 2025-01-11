@@ -18,6 +18,9 @@ export default function Home() {
   const [chats, setChats] = useState<Chat[]>([]);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [showCreateModal, setShowCreateModal] = useState(false);
+  const [channelTitle, setChannelTitle] = useState('');
+  const [channelAbout, setChannelAbout] = useState('');
   const [session, setSession] = useState(() => {
     if (typeof window !== 'undefined') {
       return localStorage.getItem('telegramSession') || '';
@@ -147,6 +150,41 @@ export default function Home() {
     setChats([]);
   };
 
+  const handleCreateChannel = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+    setError('');
+
+    try {
+      const response = await fetch('/api/telegram/mtproto', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'createChannel',
+          title: channelTitle,
+          about: channelAbout,
+          session,
+        }),
+      });
+
+      const data = await response.json();
+      if (data.success) {
+        setShowCreateModal(false);
+        setChannelTitle('');
+        setChannelAbout('');
+        // Refresh the chat list
+        fetchChats();
+      } else {
+        setError(data.error || 'Failed to create channel');
+      }
+    } catch (err) {
+      setError('Failed to create channel');
+      console.error('Error:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -219,8 +257,63 @@ export default function Home() {
 
         {step === 'authenticated' && (
           <div className="space-y-6">
-            <h1 className="text-2xl font-bold text-black text-center mb-6">Your Telegram Chats</h1>
-            
+            <div className="flex justify-between items-center">
+              <h1 className="text-2xl font-bold text-black">Your Telegram Chats</h1>
+              <button
+                onClick={() => setShowCreateModal(true)}
+                className="bg-blue-500 text-white py-2 px-4 rounded hover:bg-blue-600 transition-colors"
+              >
+                Create Channel
+              </button>
+            </div>
+
+            {/* Create Channel Modal */}
+            {showCreateModal && (
+              <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4">
+                <div className="bg-white rounded-lg p-6 max-w-md w-full">
+                  <h2 className="text-xl font-bold text-black mb-4">Create New Channel</h2>
+                  <form onSubmit={handleCreateChannel} className="space-y-4">
+                    <div>
+                      <label className="block text-sm font-medium text-black">Channel Title</label>
+                      <input
+                        type="text"
+                        value={channelTitle}
+                        onChange={(e) => setChannelTitle(e.target.value)}
+                        className="mt-1 block w-full rounded-md border border-black px-3 py-2 text-black"
+                        required
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-black">About (Optional)</label>
+                      <textarea
+                        value={channelAbout}
+                        onChange={(e) => setChannelAbout(e.target.value)}
+                        className="mt-1 block w-full rounded-md border border-black px-3 py-2 text-black"
+                        rows={3}
+                      />
+                    </div>
+                    {error && <p className="text-red-500 text-sm">{error}</p>}
+                    <div className="flex justify-end space-x-2">
+                      <button
+                        type="button"
+                        onClick={() => setShowCreateModal(false)}
+                        className="px-4 py-2 text-black border border-black rounded hover:bg-gray-100"
+                      >
+                        Cancel
+                      </button>
+                      <button
+                        type="submit"
+                        className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
+                        disabled={loading}
+                      >
+                        Create
+                      </button>
+                    </div>
+                  </form>
+                </div>
+              </div>
+            )}
+
             <div className="space-y-4">
               <h2 className="text-xl font-semibold text-black">Channels</h2>
               <div className="space-y-2">

@@ -176,6 +176,39 @@ export async function POST(req: Request) {
           });
         }
 
+      case 'createChannel':
+        try {
+          const { title, about } = body;
+          
+          if (!title) {
+            return NextResponse.json(
+              { success: false, error: 'Channel title is required' },
+              { status: 400 }
+            );
+          }
+
+          const result = await client.invoke(new Api.channels.CreateChannel({
+            title,
+            about: about || '',
+            broadcast: true,
+            megagroup: false,
+          }));
+
+          return NextResponse.json({ 
+            success: true, 
+            channel: {
+              id: result.chats[0].id.toString(),
+              title: result.chats[0].title,
+            }
+          });
+        } catch (error: any) {
+          console.error('Create channel error:', error);
+          return NextResponse.json({
+            success: false,
+            error: error.message || 'Failed to create channel',
+          });
+        }
+
       default:
         return NextResponse.json(
           { success: false, error: 'Invalid action' },
