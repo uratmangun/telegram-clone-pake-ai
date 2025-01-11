@@ -94,6 +94,7 @@ export async function POST(req: Request) {
             dialogs.map(async (dialog) => {
               let type = 'contact';
               let title = dialog.title || dialog.name || 'Unnamed';
+              let username = undefined;
               
               if (dialog.entity) {
                 const entity = dialog.entity;
@@ -102,15 +103,18 @@ export async function POST(req: Request) {
                 if (entity.className === 'Channel') {
                   // Channels can be either broadcast channels or megagroups (supergroups)
                   type = entity.megagroup ? 'group' : 'channel';
+                  if ('username' in entity) username = entity.username;
                 } else if (entity.className === 'Chat') {
                   type = 'group';
                 } else if (entity.className === 'User' && entity.bot) {
                   type = 'bot';
+                  if ('username' in entity) username = entity.username;
                 }
 
                 // Get additional info for title
                 if (entity.className === 'User') {
                   title = [entity.firstName, entity.lastName].filter(Boolean).join(' ') || entity.username || 'Unnamed';
+                  if ('username' in entity) username = entity.username;
                 }
               }
 
@@ -121,6 +125,8 @@ export async function POST(req: Request) {
                 entityType: dialog.entity?.className || 'Unknown',
                 isBroadcast: dialog.entity?.broadcast || false,
                 isMegagroup: dialog.entity?.megagroup || false,
+                isCreator: dialog.entity?.creator || false,
+                username
               };
             })
           );
@@ -206,6 +212,99 @@ export async function POST(req: Request) {
           return NextResponse.json({
             success: false,
             error: error.message || 'Failed to create channel',
+          });
+        }
+
+      case 'deleteChannel':
+        try {
+          const { channelId } = body;
+          
+          if (!channelId) {
+            return NextResponse.json(
+              { success: false, error: 'Channel ID is required' },
+              { status: 400 }
+            );
+          }
+
+          const result = await client.invoke(new Api.channels.DeleteChannel({
+            channel: channelId
+          }));
+
+          return NextResponse.json({ 
+            success: true
+          });
+        } catch (error: any) {
+          console.error('Delete channel error:', error);
+          return NextResponse.json({
+            success: false,
+            error: error.message || 'Failed to delete channel',
+          });
+        }
+
+      case 'getMessages':
+        try {
+          const { channelId, limit = 100 } = body;
+          
+          if (!channelId) {
+            return NextResponse.json(
+              { success: false, error: 'Channel ID is required' },
+              { status: 400 }
+            );
+          }
+
+          const messages = await client.getMessages(channelId, {
+            limit: limit
+          });
+
+          const formattedMessages = messages.map(message => ({
+            id: message.id,
+            date: message.date,
+            message: message.message,
+            fromId: message.fromId?.toString(),
+            views: message.views,
+            forwards: message.forwards,
+            replyTo: message.replyTo ? {
+              replyToMsgId: message.replyTo.replyToMsgId,
+              replyToTopId: message.replyTo.replyToTopId,
+            } : null,
+            media: message.media ? {
+              type: message.media.className,
+            } : null
+          }));
+
+          return NextResponse.json({ 
+            success: true,
+            messages: formattedMessages
+          });
+        } catch (error: any) {
+          console.error('Get messages error:', error);
+          return NextResponse.json({
+            success: false,
+            error: error.message || 'Failed to get messages',
+          });
+        }
+
+      case 'sendMessage':
+        try {
+          const { channelId, message } = body;
+          
+          if (!channelId || !message) {
+            return NextResponse.json(
+              { success: false, error: 'Channel ID and message are required' },
+              { status: 400 }
+            );
+          }
+
+          await client.sendMessage(channelId, { message });
+
+          return NextResponse.json({ 
+            success: true
+          });
+        } catch (error: any) {
+          console.error('Send message error:', error);
+          return NextResponse.json({
+            success: false,
+            error: error.message || 'Failed to send message',
           });
         }
 
